@@ -841,27 +841,32 @@ const useNodosStore = defineStore("nodos", () => {
         });
       }
 
-      if (datos.conexiones && Array.isArray(datos.conexiones)) {
-        datos.conexiones.forEach((connData: any) => {
-          const origen = document.querySelector(
-            `[data-nodo-id="${connData.origenId}"]`
-          ) as HTMLElement;
-          const destino = document.querySelector(
-            `[data-nodo-id="${connData.destinoId}"]`
-          ) as HTMLElement;
+      setTimeout(() => {
+        if (datos.conexiones && Array.isArray(datos.conexiones)) {
+          datos.conexiones.forEach((connData: any) => {
+            const origen = document.querySelector(
+              `[data-nodo-id="${connData.origenId}"]`
+            ) as HTMLElement;
+            const destino = document.querySelector(
+              `[data-nodo-id="${connData.destinoId}"]`
+            ) as HTMLElement;
 
-          if (origen && destino) {
-            setTimeout(() => {
+            if (origen && destino) {
               conexiones.value.set(connData.id, {
                 origen,
                 destino,
                 controlPoints: connData.controlPoints || [],
               });
               dibujarOActualizarConexion(origen, destino, connData.id);
-            }, 100);
-          }
-        });
-      }
+            } else {
+              console.warn(
+                `No se pudieron encontrar los nodos para la conexión:`,
+                connData
+              );
+            }
+          });
+        }
+      }, 200);
 
       console.log("Configuración importada exitosamente");
     } catch (error) {
