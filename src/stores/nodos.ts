@@ -24,7 +24,7 @@ const useNodosStore = defineStore("nodos", () => {
     nodoEnMovimiento: null as Nodo | null,
     puntoControlEnMovimiento: null as PuntoControlMovimiento | null,
     huboMovimiento: false,
-    huboMovimientoControl: false, // Nueva bandera para movimiento de puntos de control
+    huboMovimientoControl: false,
     clickEnLinea: false,
     nodoSeleccionado: null as Nodo | null,
   });
@@ -842,6 +842,15 @@ const useNodosStore = defineStore("nodos", () => {
       }
 
       setTimeout(() => {
+        nodos.value.forEach(nodo => {
+            const el = document.querySelector(`[data-nodo-id="${nodo.id}"]`) as HTMLElement;
+            if (el) {
+                nodo.elemento = el;
+            } else {
+                console.warn(`No se encontró el elemento DOM para el nodo importado ${nodo.id}`);
+            }
+        });
+
         if (datos.conexiones && Array.isArray(datos.conexiones)) {
           datos.conexiones.forEach((connData: any) => {
             const origen = document.querySelector(
