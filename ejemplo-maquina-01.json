@@ -1,0 +1,80 @@
+{
+  "nodos": [
+    {
+      "id": 1,
+      "label": "q0",
+      "x": 150,
+      "y": 150,
+      "esInicial": true,
+      "esFinal": false,
+      "transiciones": [
+        {
+          "id": "trans-1",
+          "simboloLee": "0",
+          "simboloEscribe": "0",
+          "movimiento": "R",
+          "proximoEstado": 1
+        },
+        {
+          "id": "trans-2",
+          "simboloLee": "1",
+          "simboloEscribe": "1",
+          "movimiento": "R",
+          "proximoEstado": 2
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "label": "q1",
+      "x": 350,
+      "y": 150,
+      "esInicial": false,
+      "esFinal": true,
+      "transiciones": [
+        {
+          "id": "trans-3",
+          "simboloLee": "1",
+          "simboloEscribe": "1",
+          "movimiento": "R",
+          "proximoEstado": 2
+        }
+      ]
+    }
+  ],
+  "conexiones": [
+    {
+      "id": "conn-0",
+      "origenId": 1,
+      "destinoId": 1,
+      "controlPoints": [
+        {
+          "x": 200,
+          "y": 50
+        }
+      ]
+    },
+    {
+      "id": "conn-1",
+      "origenId": 1,
+      "destinoId": 2,
+      "controlPoints": [
+        {
+          "x": 250,
+          "y": 100
+        }
+      ]
+    },
+    {
+      "id": "conn-2",
+      "origenId": 2,
+      "destinoId": 2,
+      "controlPoints": [
+        {
+          "x": 400,
+          "y": 50
+        }
+      ]
+    }
+  ]
+}
