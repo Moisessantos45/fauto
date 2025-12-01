@@ -790,11 +790,17 @@ const useNodosStore = defineStore("nodos", () => {
       const groupElements = svgLienzoRef.value.querySelectorAll("g");
 
       pathElements.forEach((p) => {
-        if (!p.id.includes("punta")) p.remove();
+        const isInDefs = p.closest("defs") !== null;
+        if (!isInDefs && !p.id.includes("punta")) {
+          p.remove();
+        }
       });
 
       groupElements.forEach((g) => {
-        if (!g.id.includes("marker")) g.remove();
+        const isInDefs = g.closest("defs") !== null;
+        if (!isInDefs && !g.id.includes("marker")) {
+          g.remove();
+        }
       });
     }
   };
