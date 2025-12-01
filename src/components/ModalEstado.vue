@@ -40,7 +40,8 @@
                 <div v-for="(trans, idx) in formulario.transiciones" :key="idx"
                     class="bg-white p-2.5 rounded-lg text-xs flex justify-between items-center shadow-sm">
                     <span class="font-mono text-slate-600">'{{ trans.simboloLee }}' → '{{ trans.simboloEscribe }}'
-                        <span class="text-teal-600">({{ trans.movimiento }})</span> → {{ obtenerLabelEstado(trans.proximoEstado) }}</span>
+                        <span class="text-teal-600">({{ trans.movimiento }})</span> → {{
+                            obtenerLabelEstado(trans.proximoEstado) }}</span>
                     <button @click="formulario.transiciones.splice(idx, 1)"
                         class="text-red-400 hover:text-red-600 font-bold ml-2 text-lg transition">✕</button>
                 </div>
@@ -71,14 +72,8 @@
 
 <script lang="ts" setup>
 import { computed } from 'vue';
-import type { Transicion, Nodo } from '@/types/nodo';
-
-interface EstadoFormulario {
-    nombre: string;
-    esInicial: boolean;
-    esFinal: boolean;
-    transiciones: Transicion[];
-}
+import type { Nodo } from '@/types/nodo';
+import type { EstadoFormulario } from '@/types/types';
 
 const props = defineProps<{
     visible: boolean;

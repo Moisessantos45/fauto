@@ -3,7 +3,7 @@
         <div class="h-1 bg-linear-to-r from-teal-500 to-emerald-400"></div>
 
         <aside id="menu" ref="menu"
-            class="menu flex flex-col absolute w-[320px] max-h-[90vh] p-5 bg-white/95 backdrop-blur-md rounded-2xl shadow-xl top-20 right-5 overflow-y-auto z-20 cursor-grab user-select-none gap-4 scrollbar_styled">
+            class="menu flex flex-col absolute w-[320px] max-h-[90vh] p-5 bg-white/95 backdrop-blur-md rounded-2xl shadow-xl top-20 right-5 overflow-y-auto z-20 cursor-grab user-select-none gap-4 scrollbar_styled border border-slate-200">
 
             <div class="pb-3 border-b border-slate-100">
                 <div class="flex items-center gap-2 mb-2">
@@ -33,7 +33,6 @@
                         :disabled="simuladorStore.enSimulacion" placeholder="Ej: 110101"
                         class="border border-slate-200 rounded-lg p-2.5 text-sm focus:border-teal-400 focus:outline-none focus:ring-2 focus:ring-teal-100 disabled:bg-slate-50 bg-slate-50/50 transition" />
 
-                    <!-- Control de velocidad -->
                     <div class="flex items-center gap-2">
                         <label class="text-xs font-medium text-slate-600 whitespace-nowrap">Velocidad:</label>
                         <input type="range" v-model.number="velocidadAnimacion" min="100" max="2000" step="100"
@@ -41,19 +40,21 @@
                         <span class="text-xs text-slate-500 w-12 text-right">{{ velocidadAnimacion }}ms</span>
                     </div>
 
-                    <button @click="iniciarSimulacionAnimada" :disabled="simuladorStore.enSimulacion"
-                        title="Iniciar simulación con animación" type="button"
+                    <button @click="simulacionAnimadaStore.iniciarSimulacionAnimada"
+                        :disabled="simuladorStore.enSimulacion" title="Iniciar simulación con animación" type="button"
                         class="w-full bg-teal-500 text-white px-3 py-2.5 rounded-lg font-semibold hover:bg-teal-600 hover:shadow-md transition cursor-pointer text-sm disabled:opacity-60 disabled:cursor-not-allowed shadow-sm">
                         ▶ Simular Completo
                     </button>
 
                     <div class="flex gap-2">
-                        <button @click="ejecutarUnPasoAnimado" :disabled="simuladorStore.simulacionAutomaticaActiva"
+                        <button @click="simulacionAnimadaStore.ejecutarUnPasoAnimado"
+                            :disabled="simuladorStore.simulacionAutomaticaActiva"
                             class="flex-1 bg-slate-100 text-slate-700 px-3 py-2.5 rounded-lg font-semibold hover:bg-slate-200 transition cursor-pointer text-sm disabled:opacity-50 disabled:cursor-not-allowed"
                             title="Ejecutar un paso">
                             ⏭ Paso
                         </button>
-                        <button @click="togglePausa" :disabled="!simuladorStore.simulacionAutomaticaActiva"
+                        <button @click="simulacionAnimadaStore.togglePausa"
+                            :disabled="!simuladorStore.simulacionAutomaticaActiva"
                             class="flex-1 px-3 py-2.5 rounded-lg font-semibold transition cursor-pointer text-sm disabled:opacity-50 disabled:cursor-not-allowed"
                             :class="simuladorStore.pausado ? 'bg-teal-100 text-teal-700 hover:bg-teal-200' : 'bg-amber-100 text-amber-700 hover:bg-amber-200'"
                             :title="simuladorStore.pausado ? 'Reanudar' : 'Pausar'">
@@ -61,7 +62,7 @@
                         </button>
                     </div>
 
-                    <button @click="reiniciarSimulacion"
+                    <button @click="simulacionAnimadaStore.reiniciarSimulacion"
                         :disabled="!simuladorStore.enSimulacion && simuladorStore.historialPasos.length === 0"
                         class="w-full bg-slate-100 text-slate-600 px-3 py-2.5 rounded-lg font-semibold hover:bg-slate-200 transition cursor-pointer text-sm disabled:opacity-50 disabled:cursor-not-allowed"
                         title="Reiniciar simulación">
@@ -84,7 +85,6 @@
                                 simuladorStore.estadoActual)?.label : 'N/A'}}</span>
                     </div>
 
-                    <!-- Visualización de la cinta mejorada -->
                     <div class="mt-2">
                         <span class="text-slate-600 font-medium block mb-1">Cinta:</span>
                         <div class="flex flex-wrap gap-0.5 justify-center bg-slate-100 p-2 rounded-lg">
@@ -110,11 +110,11 @@
                     🗑 Limpiar Lienzo
                 </button>
                 <div class="flex gap-2">
-                    <button @click="exportarJSON"
+                    <button @click="jsonExportImport.exportarJSON"
                         class="flex-1 bg-slate-700 text-white px-3 py-2.5 rounded-lg font-semibold hover:bg-slate-800 transition cursor-pointer text-sm shadow-sm">
                         📥 Exportar
                     </button>
-                    <button @click="importarJSON"
+                    <button @click="jsonExportImport.importarJSON"
                         class="flex-1 bg-slate-100 text-slate-700 px-3 py-2.5 rounded-lg font-semibold hover:bg-slate-200 transition cursor-pointer text-sm">
                         📤 Importar
                     </button>
@@ -123,36 +123,25 @@
         </aside>
 
         <ModalEstado :visible="modalVisible" :formulario="estadoFormulario" :editando-id="estadoEditandoId"
-            :nodos="nodosStore.nodos" @close="cerrarModal" @submit="guardarEstado"
-            @open-transicion="modalTransicionVisible = true" @delete="eliminarEstadoActual" />
+            :nodos="nodosStore.nodos" @close="useStateTransition.cerrarModal" @submit="useStateTransition.guardarEstado"
+            @open-transicion="modalTransicionVisible = true" @delete="useStateTransition.eliminarEstadoActual" />
 
         <ModalTransicion :visible="modalTransicionVisible" :formulario="transicionFormulario" :nodos="nodosStore.nodos"
-            @close="modalTransicionVisible = false" @submit="agregarTransicion" />
+            @close="modalTransicionVisible = false" @submit="useStateTransition.agregarTransicion" />
 
-        <ModalMessage
-            :visible="showMessageModal"
-            :title="messageModalTitle"
-            :message="messageModalMessage"
-            @close="closeMessageModal"
-        />
+        <ModalMessage @close="useModal.closeModal" />
 
-        <ModalConfirm
-            :visible="showConfirmModal"
-            :title="confirmModalTitle"
-            :message="confirmModalMessage"
-            @confirm="handleConfirm"
-            @cancel="closeConfirmModal"
-        />
+        <ModalConfirm @confirm="useStateTransition.handleConfirm" @cancel="useStateTransition.closeConfirmModal" />
 
         <svg id="svg-lienzo" ref="svgLienzoRef"
             style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: auto; z-index: 5;">
             <defs>
                 <pattern id="smallGrid" width="20" height="20" patternUnits="userSpaceOnUse">
-                    <path d="M 20 0 L 0 0 0 20" fill="none" stroke="#e2e8f0" stroke-width="0.5"/>
+                    <path d="M 20 0 L 0 0 0 20" fill="none" stroke="#e2e8f0" stroke-width="0.5" />
                 </pattern>
                 <pattern id="grid" width="100" height="100" patternUnits="userSpaceOnUse">
-                    <rect width="100" height="100" fill="url(#smallGrid)"/>
-                    <path d="M 100 0 L 0 0 0 100" fill="none" stroke="#cbd5e1" stroke-width="1"/>
+                    <rect width="100" height="100" fill="url(#smallGrid)" />
+                    <path d="M 100 0 L 0 0 0 100" fill="none" stroke="#cbd5e1" stroke-width="1" />
                 </pattern>
 
                 <linearGradient id="gradient-azul" x1="0%" y1="0%" x2="100%" y2="100%">
@@ -169,7 +158,7 @@
                     <path d="M 0 0 L 20 10 L 0 20 Z" fill="#14b8a6" stroke="#10b981" stroke-width="0.5" />
                 </marker>
             </defs>
-            <rect width="100%" height="100%" fill="url(#grid)"/>
+            <rect width="100%" height="100%" fill="url(#grid)" />
         </svg>
 
         <div v-for="nodo in nodosStore.nodos" :key="nodo.id"
@@ -183,8 +172,8 @@
                 { 'estado-visitado': estadosVisitados.has(nodo.id) && simuladorStore.estadoActual !== nodo.id }
             ]" :style="{ left: `${nodo.x}px`, top: `${nodo.y}px`, width: '70px', height: '70px' }"
             @mousedown="nodosStore.iniciarMovimiento($event, nodo)"
-            @click="nodosStore.seleccionarNodoParaConexion($event, nodo)" @contextmenu.prevent="editarEstado(nodo)"
-            :data-nodo-id="nodo.id"
+            @click="nodosStore.seleccionarNodoParaConexion($event, nodo)"
+            @contextmenu.prevent="useStateTransition.editarEstado(nodo)" :data-nodo-id="nodo.id"
             :title="`${nodo.label}${nodo.esInicial ? ' [INICIAL]' : ''}${nodo.esFinal ? ' [FINAL]' : ''}\nClick derecho para editar`">
             <div>{{ nodo.label }}</div>
             <div v-if="nodo.esInicial || nodo.esFinal" class="text-xs mt-1">
@@ -194,7 +183,7 @@
         </div>
 
         <div v-if="nodosStore.nodos.length > 0" ref="panelTransiciones"
-            class="panel-transiciones absolute bottom-5 right-5 w-80 max-h-64 p-4 bg-white/95 backdrop-blur-md rounded-2xl shadow-xl overflow-y-auto z-20 cursor-grab user-select-none hover:shadow-2xl transition scrollbar_styled"
+            class="panel-transiciones absolute bottom-5 right-5 w-80 max-h-64 p-4 bg-white/95 backdrop-blur-md rounded-2xl shadow-xl overflow-y-auto z-20 cursor-grab user-select-none hover:shadow-2xl transition scrollbar_styled border border-slate-200"
             @mousedown="initializeMenuElements">
             <h3 class="font-semibold text-slate-800 mb-3 cursor-grab">
                 📋 Info de Transiciones</h3>
@@ -216,372 +205,36 @@
 </template>
 
 <script lang="ts" setup>
-import { ref, reactive, onMounted, onBeforeUnmount } from 'vue'
+import { onMounted, onBeforeUnmount } from 'vue'
 import { storeToRefs } from 'pinia';
-import useMenusStore from '@/stores/menus';
-import useNodosStore from '@/stores/nodos';
-import { useSimuladorStore } from '@/stores/simulador';
-import type { Nodo, Transicion } from '@/types/nodo';
 import ModalEstado from '@/components/ModalEstado.vue';
 import ModalTransicion from '@/components/ModalTransicion.vue';
 import ModalMessage from '@/components/ModalMessage.vue';
-import ModalConfirm from '@/components/ModalConfirm.vue'; // New import
+import ModalConfirm from '@/components/ModalConfirm.vue';
+import useModalStore from '@/stores/modal';
+import useMenusStore from '@/stores/menus';
+import useNodosStore from '@/stores/nodos';
+import { useSimuladorStore } from '@/stores/simulador';
+import useSimulationAnimatedStore from '@/stores/simulacionAnimada';
+import useStateTransitionStore from '@/stores/stateTransition';
+import useJsonExportImportStore from '@/stores/jsonExportImport';
 
+const useModal = useModalStore();
 const menusStore = useMenusStore();
 const { menu, modalVisible } = storeToRefs(menusStore);
 
 const nodosStore = useNodosStore();
 const { svgLienzoRef, conexiones, nodos, dragState } = storeToRefs(nodosStore);
 
+const useStateTransition = useStateTransitionStore();
+const { panelTransiciones, velocidadAnimacion, estadosVisitados, entradaSimulacion, estadoFormulario, estadoEditandoId, modalTransicionVisible, transicionFormulario } = storeToRefs(useStateTransition);
+
 const simuladorStore = useSimuladorStore();
-
-const panelTransiciones = ref<HTMLElement | null>(null);
-
-const entradaSimulacion = ref('');
-const modalTransicionVisible = ref(false);
-const velocidadAnimacion = ref(500);
-const estadosVisitados = ref<Set<number>>(new Set());
-const conexionActiva = ref<string | null>(null);
-
-const estadoEditandoId = ref<number | null>(null);
-
-const estadoFormulario = reactive({
-    nombre: '',
-    esInicial: false,
-    esFinal: false,
-    transiciones: [] as Transicion[],
-});
-
-const transicionFormulario = reactive({
-    simboloLee: '',
-    simboloEscribe: '',
-    movimiento: 'R' as 'L' | 'R' | 'S',
-    proximoEstado: '',
-});
-
-const showMessageModal = ref(false);
-const messageModalTitle = ref('');
-const messageModalMessage = ref('');
-
-const openMessageModal = (title: string, message: string) => {
-    messageModalTitle.value = title;
-    messageModalMessage.value = message;
-    showMessageModal.value = true;
-};
-
-const closeMessageModal = () => {
-    showMessageModal.value = false;
-    messageModalTitle.value = '';
-    messageModalMessage.value = '';
-};
-
-const showConfirmModal = ref(false);
-const confirmModalTitle = ref('');
-const confirmModalMessage = ref('');
-let onConfirmAction: (() => void) | null = null;
-
-const openConfirmModal = (title: string, message: string, onConfirm: () => void) => {
-    confirmModalTitle.value = title;
-    confirmModalMessage.value = message;
-    onConfirmAction = onConfirm;
-    showConfirmModal.value = true;
-};
-
-const handleConfirm = () => {
-    if (onConfirmAction) {
-        onConfirmAction();
-    }
-    closeConfirmModal();
-};
-
-const closeConfirmModal = () => {
-    showConfirmModal.value = false;
-    confirmModalTitle.value = '';
-    confirmModalMessage.value = '';
-    onConfirmAction = null;
-};
-
-
-const guardarEstado = () => {
-    if (!estadoFormulario.nombre.trim()) {
-        openMessageModal('Error de validación', 'Por favor ingresa un nombre para el estado');
-        return;
-    }
-
-    let nodoId: number;
-
-    if (estadoEditandoId.value !== null) {
-        nodoId = estadoEditandoId.value;
-        const nodo = nodosStore.nodos.find(n => n.id === nodoId);
-        if (nodo) {
-            nodo.label = estadoFormulario.nombre;
-            nodo.esFinal = estadoFormulario.esFinal;
-
-            if (estadoFormulario.esInicial) {
-                nodosStore.nodos.forEach(n => n.esInicial = n.id === estadoEditandoId.value);
-            } else {
-                nodo.esInicial = false;
-            }
-
-            nodo.transiciones = [...estadoFormulario.transiciones];
-
-            nodosStore.sincronizarConexionesDeNodo(nodoId);
-        }
-    } else {
-        const nuevoEstado = nodosStore.agregarEstado(
-            estadoFormulario.nombre,
-            Math.random() * 600 + 100,
-            Math.random() * 400 + 100,
-            estadoFormulario.esInicial,
-            estadoFormulario.esFinal
-        );
-
-        nodoId = nuevoEstado.id;
-
-        estadoFormulario.transiciones.forEach(trans => {
-            nodosStore.agregarTransicion(
-                nuevoEstado.id,
-                trans.simboloLee,
-                trans.simboloEscribe,
-                trans.movimiento,
-                trans.proximoEstado
-            );
-        });
-
-        setTimeout(() => {
-            const element = document.querySelector(`[data-nodo-id="${nuevoEstado.id}"]`) as HTMLElement;
-            if (element) {
-                nuevoEstado.elemento = element;
-            }
-            nodosStore.sincronizarConexionesDeNodo(nodoId);
-        }, 100);
-    }
-
-    cerrarModal();
-};
-
-const agregarTransicion = () => {
-    if (!transicionFormulario.simboloLee.trim() || !transicionFormulario.simboloEscribe.trim() || !transicionFormulario.proximoEstado) {
-        openMessageModal('Error de validación', 'Por favor completa todos los campos de la transición');
-        return;
-    }
-
-    estadoFormulario.transiciones.push({
-        id: `trans-${Date.now()}`,
-        simboloLee: transicionFormulario.simboloLee,
-        simboloEscribe: transicionFormulario.simboloEscribe,
-        movimiento: transicionFormulario.movimiento,
-        proximoEstado: parseInt(transicionFormulario.proximoEstado as any),
-    });
-
-    transicionFormulario.simboloLee = '';
-    transicionFormulario.simboloEscribe = '';
-    transicionFormulario.movimiento = 'R';
-    transicionFormulario.proximoEstado = '';
-    modalTransicionVisible.value = false;
-};
-
-const cerrarModal = () => {
-    modalVisible.value = false;
-    estadoEditandoId.value = null;
-    estadoFormulario.nombre = '';
-    estadoFormulario.esInicial = false;
-    estadoFormulario.esFinal = false;
-    estadoFormulario.transiciones = [];
-};
-
-const editarEstado = (nodo: Nodo) => {
-    estadoEditandoId.value = nodo.id;
-    estadoFormulario.nombre = nodo.label;
-    estadoFormulario.esInicial = nodo.esInicial;
-    estadoFormulario.esFinal = nodo.esFinal;
-    estadoFormulario.transiciones = [...nodo.transiciones];
-    modalVisible.value = true;
-};
-
-const eliminarEstadoActual = () => {
-    const idParaEliminar = estadoEditandoId.value;
-    if (idParaEliminar === null) return;
-
-    const nodo = nodosStore.nodos.find(n => n.id === idParaEliminar);
-    if (!nodo) return;
-
-    openConfirmModal(
-        'Confirmar Eliminación',
-        `¿Estás seguro que deseas eliminar el estado "${nodo.label}" y todas sus conexiones?`,
-        () => {
-            nodosStore.eliminarEstado(idParaEliminar);
-            cerrarModal();
-        }
-    );
-};
-
-const animarTransicion = async (estadoOrigen: number, estadoDestino: number) => {
-    let conexionIdEncontrada: string | null = null;
-
-    conexiones.value.forEach((conn, connId) => {
-        const origenId = parseInt(conn.origen.getAttribute('data-nodo-id') || '-1');
-        const destinoId = parseInt(conn.destino.getAttribute('data-nodo-id') || '-1');
-
-        if (origenId === estadoOrigen && destinoId === estadoDestino) {
-            conexionIdEncontrada = connId;
-        }
-    });
-
-    conexionActiva.value = conexionIdEncontrada;
-
-    if (conexionActiva.value) {
-        const pathElement = document.getElementById(conexionActiva.value);
-        if (pathElement) {
-            pathElement.classList.add('conexion-activa');
-        }
-    }
-
-    await new Promise(resolve => setTimeout(resolve, velocidadAnimacion.value / 2));
-
-    if (conexionActiva.value) {
-        const pathElement = document.getElementById(conexionActiva.value);
-        if (pathElement) {
-            pathElement.classList.remove('conexion-activa');
-        }
-    }
-    conexionActiva.value = null;
-};
-
-const iniciarSimulacionAnimada = async () => {
-    const validacion = simuladorStore.validarConfiguracion();
-    if (!validacion.valida) {
-        openMessageModal('Configuración inválida', validacion.errores.join('\n'));
-        return;
-    }
-
-    if (!entradaSimulacion.value.trim()) {
-        openMessageModal('Error de entrada', 'Por favor ingresa una cadena de entrada');
-        return;
-    }
-
-    // Debug: mostrar configuración de nodos
-    console.log('=== INICIO SIMULACIÓN ===');
-    console.log('Entrada:', entradaSimulacion.value);
-    console.log('Nodos:', nodosStore.nodos.map(n => ({
-        id: n.id,
-        label: n.label,
-        esInicial: n.esInicial,
-        esFinal: n.esFinal,
-        transiciones: n.transiciones.map(t => ({
-            lee: t.simboloLee,
-            escribe: t.simboloEscribe,
-            mov: t.movimiento,
-            proximo: t.proximoEstado
-        }))
-    })));
-
-    estadosVisitados.value.clear();
-
-    simuladorStore.velocidadSimulacion = velocidadAnimacion.value;
-
-
-    simuladorStore.iniciarSimulacion(entradaSimulacion.value);
-
-    if (simuladorStore.estadoActual) {
-        estadosVisitados.value.add(simuladorStore.estadoActual);
-    }
-
-
-    await simularConAnimacion();
-};
-
-const simularConAnimacion = async () => {
-    simuladorStore.simulacionAutomaticaActiva = true;
-    let maxPasos = 10000;
-
-    console.log('=== INICIANDO SIMULACIÓN PASO A PASO ===');
-
-    while (simuladorStore.enSimulacion && maxPasos > 0) {
-        if (!simuladorStore.pausado) {
-            const estadoAnterior = simuladorStore.estadoActual;
-            console.log(`[Antes de paso] Estado: ${estadoAnterior}, enSimulacion: ${simuladorStore.enSimulacion}`);
-            
-            const continuar = simuladorStore.ejecutarPaso();
-            
-            console.log(`[Después de paso] Estado: ${simuladorStore.estadoActual}, continuar: ${continuar}, enSimulacion: ${simuladorStore.enSimulacion}`);
-
-            if (estadoAnterior && simuladorStore.estadoActual) {
-                await animarTransicion(estadoAnterior, simuladorStore.estadoActual);
-
-                estadosVisitados.value.add(simuladorStore.estadoActual);
-            }
-
-            maxPasos--;
-            await new Promise(resolve => setTimeout(resolve, velocidadAnimacion.value / 2));
-
-            if (!continuar) break;
-        } else {
-            await new Promise(resolve => setTimeout(resolve, 100));
-        }
-    }
-
-    simuladorStore.simulacionAutomaticaActiva = false;
-
-    console.log('=== FIN SIMULACIÓN ===');
-    console.log('Historial:', simuladorStore.historialPasos);
-
-    const ultimoPaso = simuladorStore.historialPasos[simuladorStore.historialPasos.length - 1];
-    if (ultimoPaso) {
-        console.log('Último paso:', ultimoPaso);
-        const nodoFinal = nodosStore.nodos.find(n => n.id === ultimoPaso.estadoActual);
-        console.log('Nodo final encontrado:', nodoFinal);
-        if (nodoFinal?.esFinal) {
-            openMessageModal('✅ Cadena ACEPTADA', `Estado final: ${nodoFinal.label}\nPasos: ${simuladorStore.pasoActual}`);
-        } else {
-            openMessageModal('❌ Cadena RECHAZADA', `${ultimoPaso.mensaje}\nPasos: ${simuladorStore.pasoActual}`);
-        }
-    }
-};
-
-const ejecutarUnPasoAnimado = async () => {
-    if (!simuladorStore.enSimulacion) {
-        const validacion = simuladorStore.validarConfiguracion();
-        if (!validacion.valida) {
-            openMessageModal('Configuración inválida', validacion.errores.join('\n'));
-            return;
-        }
-
-        if (!entradaSimulacion.value.trim()) {
-            openMessageModal('Error de entrada', 'Por favor ingresa una cadena de entrada');
-            return;
-        }
-
-        estadosVisitados.value.clear();
-        simuladorStore.iniciarSimulacion(entradaSimulacion.value);
-
-        if (simuladorStore.estadoActual) {
-            estadosVisitados.value.add(simuladorStore.estadoActual);
-        }
-        return;
-    }
-
-    const estadoAnterior = simuladorStore.estadoActual;
-    simuladorStore.ejecutarPaso();
-
-    if (estadoAnterior && simuladorStore.estadoActual) {
-        await animarTransicion(estadoAnterior, simuladorStore.estadoActual);
-        estadosVisitados.value.add(simuladorStore.estadoActual);
-    }
-};
-
-const togglePausa = () => {
-    simuladorStore.togglePausa();
-};
-
-const reiniciarSimulacion = () => {
-    simuladorStore.reiniciar();
-    estadosVisitados.value.clear();
-    conexionActiva.value = null;
-};
+const simulacionAnimadaStore = useSimulationAnimatedStore();
+const jsonExportImport = useJsonExportImportStore();
 
 const limpiarLienzo = () => {
-    openConfirmModal(
+    useStateTransition.openConfirmModal(
         'Confirmar Limpieza de Lienzo',
         '¿Estás seguro que deseas limpiar el lienzo? Esto eliminará todos los estados y conexiones.',
         () => {
@@ -589,37 +242,6 @@ const limpiarLienzo = () => {
             simuladorStore.reiniciar();
         }
     );
-};
-
-const exportarJSON = () => {
-    const json = nodosStore.exportarJSON();
-    const element = document.createElement('a');
-    element.setAttribute('href', 'data:text/plain;charset=utf-8,' + encodeURIComponent(json));
-    element.setAttribute('download', 'maquina-turing.json');
-    element.style.display = 'none';
-    document.body.appendChild(element);
-    element.click();
-    document.body.removeChild(element);
-};
-
-const importarJSON = () => {
-    const input = document.createElement('input');
-    input.type = 'file';
-    input.accept = '.json';
-    input.onchange = (e: any) => {
-        const file = e.target.files[0];
-        const reader = new FileReader();
-        reader.onload = (event: any) => {
-            try {
-                nodosStore.importarJSON(event.target.result);
-                openMessageModal('Importación exitosa', 'Configuración importada exitosamente');
-            } catch (error) {
-                openMessageModal('Error al importar', 'Error al importar: ' + error);
-            }
-        };
-        reader.readAsText(file);
-    };
-    input.click();
 };
 
 const initializeMenuElements = (e: MouseEvent) => {
