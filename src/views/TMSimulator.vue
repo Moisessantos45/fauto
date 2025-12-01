@@ -149,11 +149,11 @@
                     <stop offset="100%" style="stop-color:#10b981;stop-opacity:1" />
                 </linearGradient>
 
-                <marker id="puntaFlecha" viewBox="0 0 35 35" refX="28" refY="15" markerWidth="15" markerHeight="15"
+                <marker id="puntaFlecha" viewBox="0 0 55 55" refX="30" refY="15" markerWidth="12" markerHeight="12"
                     orient="auto" markerUnits="strokeWidth">
                     <path d="M 0 0 L 30 15 L 0 30 Z" fill="#14b8a6" stroke="#10b981" stroke-width="0.5" />
                 </marker>
-                <marker id="puntaFlechaPeq" viewBox="0 0 20 20" refX="18" refY="10" markerWidth="10" markerHeight="10"
+                <marker id="puntaFlechaPeq" viewBox="0 0 40 40" refX="18" refY="10" markerWidth="8" markerHeight="8"
                     orient="auto" markerUnits="strokeWidth">
                     <path d="M 0 0 L 20 10 L 0 20 Z" fill="#14b8a6" stroke="#10b981" stroke-width="0.5" />
                 </marker>

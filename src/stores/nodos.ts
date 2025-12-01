@@ -40,6 +40,60 @@ const useNodosStore = defineStore("nodos", () => {
     };
   };
 
+  const obtenerPuntoPerimetro = (
+    centro: Punto,
+    angulo: number,
+    radio: number
+  ): Punto => {
+    return {
+      x: centro.x + radio * Math.cos(angulo),
+      y: centro.y + radio * Math.sin(angulo),
+    };
+  };
+
+  const calcularAngulo = (desde: Punto, hacia: Punto): number => {
+    return Math.atan2(hacia.y - desde.y, hacia.x - desde.x);
+  };
+
+  const obtenerPuntosConexionPerimetro = (
+    centroOrigen: Punto,
+    centroDestino: Punto,
+    radioOrigen: number,
+    radioDestino: number,
+    controlPoints: Punto[]
+  ): { inicio: Punto; fin: Punto } => {
+    let puntoHaciaDestino: Punto = centroDestino;
+    let puntoHaciaOrigen: Punto = centroOrigen;
+
+    if (controlPoints && controlPoints.length > 0) {
+      const primerPunto = controlPoints[0];
+      const ultimoPunto = controlPoints[controlPoints.length - 1];
+
+      if (primerPunto) {
+        puntoHaciaDestino = primerPunto;
+      }
+      if (ultimoPunto) {
+        puntoHaciaOrigen = ultimoPunto;
+      }
+    }
+
+    const anguloSalida = calcularAngulo(centroOrigen, puntoHaciaDestino);
+    const anguloLlegada = calcularAngulo(centroDestino, puntoHaciaOrigen);
+
+    const inicio = obtenerPuntoPerimetro(
+      centroOrigen,
+      anguloSalida,
+      radioOrigen
+    );
+    const fin = obtenerPuntoPerimetro(
+      centroDestino,
+      anguloLlegada,
+      radioDestino
+    );
+
+    return { inicio, fin };
+  };
+
   const crearObtenerElementoSVG = (
     id: string,
     tipo: string,
@@ -134,17 +188,17 @@ const useNodosStore = defineStore("nodos", () => {
       ) as SVGPathElement;
     }
 
-    const pos1 = obtenerPosicionSVG(
-      origen,
-      svgLienzoRef.value.getBoundingClientRect()
-    );
-    const pos2 = obtenerPosicionSVG(
-      destino,
-      svgLienzoRef.value.getBoundingClientRect()
-    );
+    const svgRect = svgLienzoRef.value.getBoundingClientRect();
+    const centroOrigen = obtenerPosicionSVG(origen, svgRect);
+    const centroDestino = obtenerPosicionSVG(destino, svgRect);
     const conn = conexiones.value.get(connectionId)!;
 
-    console.log(`Dibujando conexión: ${connectionId}`, { pos1, pos2 });
+    const radioNodo = 35;
+
+    console.log(`Dibujando conexión: ${connectionId}`, {
+      centroOrigen,
+      centroDestino,
+    });
 
     const pathSVG = crearObtenerElementoSVG(connectionId, "path", {
       stroke: "#2563eb",
@@ -176,18 +230,28 @@ const useNodosStore = defineStore("nodos", () => {
     lineasAuxGroup.innerHTML = "";
 
     if (!conn.controlPoints || conn.controlPoints.length === 0) {
-      conn.controlPoints = [
-        { x: (pos1.x + pos2.x) / 2, y: (pos1.y + pos2.y) / 2 + 50 },
-      ];
+      const puntoMedio = {
+        x: (centroOrigen.x + centroDestino.x) / 2,
+        y: (centroOrigen.y + centroDestino.y) / 2 - 40,
+      };
+      conn.controlPoints = [puntoMedio];
     }
 
-    let pathD = `M ${pos1.x} ${pos1.y}`;
+    const { inicio, fin } = obtenerPuntosConexionPerimetro(
+      centroOrigen,
+      centroDestino,
+      radioNodo,
+      radioNodo,
+      conn.controlPoints
+    );
+
+    let pathD = `M ${inicio.x} ${inicio.y}`;
     conn.controlPoints.forEach((p) => {
       if (p && p.x !== null && p.y !== null) {
         pathD += ` L ${p.x} ${p.y}`;
       }
     });
-    pathD += ` L ${pos2.x} ${pos2.y}`;
+    pathD += ` L ${fin.x} ${fin.y}`;
     pathSVG.setAttribute("d", pathD);
 
     conn.controlPoints.forEach((cp, i) => {
@@ -202,8 +266,8 @@ const useNodosStore = defineStore("nodos", () => {
       if (firstCP)
         dibujarLineaAuxiliar(
           lineasAuxGroup,
-          pos1.x,
-          pos1.y,
+          inicio.x,
+          inicio.y,
           firstCP.x,
           firstCP.y
         );
@@ -214,13 +278,7 @@ const useNodosStore = defineStore("nodos", () => {
           dibujarLineaAuxiliar(lineasAuxGroup, cp1.x, cp1.y, cp2.x, cp2.y);
       }
       if (lastCP)
-        dibujarLineaAuxiliar(
-          lineasAuxGroup,
-          lastCP.x,
-          lastCP.y,
-          pos2.x,
-          pos2.y
-        );
+        dibujarLineaAuxiliar(lineasAuxGroup, lastCP.x, lastCP.y, fin.x, fin.y);
     }
 
     const origenId = parseInt(origen.getAttribute("data-nodo-id") || "-1");
@@ -319,7 +377,7 @@ const useNodosStore = defineStore("nodos", () => {
     const puntoIndex = parseInt(circulo.getAttribute("data-point")!);
 
     dragState.puntoControlEnMovimiento = { circulo, connectionId, puntoIndex };
-    dragState.huboMovimientoControl = false; // Reiniciar bandera
+    dragState.huboMovimientoControl = false;
 
     dragState.offsetXControl =
       e.clientX - parseFloat(circulo.getAttribute("cx")!);
@@ -394,10 +452,19 @@ const useNodosStore = defineStore("nodos", () => {
       y: e.clientY - svgRect.top,
     };
 
-    const pos1 = obtenerPosicionSVG(conn.origen, svgRect);
-    const pos2 = obtenerPosicionSVG(conn.destino, svgRect);
+    const centroOrigen = obtenerPosicionSVG(conn.origen, svgRect);
+    const centroDestino = obtenerPosicionSVG(conn.destino, svgRect);
+    const radioNodo = 35;
 
-    const allPoints = [pos1, ...(conn.controlPoints || []), pos2];
+    const { inicio, fin } = obtenerPuntosConexionPerimetro(
+      centroOrigen,
+      centroDestino,
+      radioNodo,
+      radioNodo,
+      conn.controlPoints
+    );
+
+    const allPoints = [inicio, ...(conn.controlPoints || []), fin];
     let minDistancia = Infinity;
     let mejorIndice = 0;
 
@@ -848,13 +915,17 @@ const useNodosStore = defineStore("nodos", () => {
       }
 
       setTimeout(() => {
-        nodos.value.forEach(nodo => {
-            const el = document.querySelector(`[data-nodo-id="${nodo.id}"]`) as HTMLElement;
-            if (el) {
-                nodo.elemento = el;
-            } else {
-                console.warn(`No se encontró el elemento DOM para el nodo importado ${nodo.id}`);
-            }
+        nodos.value.forEach((nodo) => {
+          const el = document.querySelector(
+            `[data-nodo-id="${nodo.id}"]`
+          ) as HTMLElement;
+          if (el) {
+            nodo.elemento = el;
+          } else {
+            console.warn(
+              `No se encontró el elemento DOM para el nodo importado ${nodo.id}`
+            );
+          }
         });
 
         if (datos.conexiones && Array.isArray(datos.conexiones)) {
