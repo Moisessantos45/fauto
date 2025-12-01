@@ -3,7 +3,7 @@
         <div class="h-1 bg-linear-to-r from-teal-500 to-emerald-400"></div>
 
         <aside id="menu" ref="menu"
-            class="menu flex flex-col absolute w-[320px] max-h-[90vh] p-5 bg-white/95 backdrop-blur-md rounded-2xl shadow-xl top-20 left-5 overflow-y-auto z-20 cursor-grab user-select-none gap-4 scrollbar_styled">
+            class="menu flex flex-col absolute w-[320px] max-h-[90vh] p-5 bg-white/95 backdrop-blur-md rounded-2xl shadow-xl top-20 right-5 overflow-y-auto z-20 cursor-grab user-select-none gap-4 scrollbar_styled">
 
             <div class="pb-3 border-b border-slate-100">
                 <div class="flex items-center gap-2 mb-2">
@@ -147,6 +147,14 @@
         <svg id="svg-lienzo" ref="svgLienzoRef"
             style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: auto; z-index: 5;">
             <defs>
+                <pattern id="smallGrid" width="20" height="20" patternUnits="userSpaceOnUse">
+                    <path d="M 20 0 L 0 0 0 20" fill="none" stroke="#e2e8f0" stroke-width="0.5"/>
+                </pattern>
+                <pattern id="grid" width="100" height="100" patternUnits="userSpaceOnUse">
+                    <rect width="100" height="100" fill="url(#smallGrid)"/>
+                    <path d="M 100 0 L 0 0 0 100" fill="none" stroke="#cbd5e1" stroke-width="1"/>
+                </pattern>
+
                 <linearGradient id="gradient-azul" x1="0%" y1="0%" x2="100%" y2="100%">
                     <stop offset="0%" style="stop-color:#14b8a6;stop-opacity:1" />
                     <stop offset="100%" style="stop-color:#10b981;stop-opacity:1" />
@@ -161,6 +169,7 @@
                     <path d="M 0 0 L 20 10 L 0 20 Z" fill="#14b8a6" stroke="#10b981" stroke-width="0.5" />
                 </marker>
             </defs>
+            <rect width="100%" height="100%" fill="url(#grid)"/>
         </svg>
 
         <div v-for="nodo in nodosStore.nodos" :key="nodo.id"
