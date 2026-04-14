@@ -15,6 +15,16 @@ const routes: Array<RouteRecordRaw> = [
     name: "TMSimulator",
     component: () => import("../views/TMSimulator.vue"),
   },
+  {
+    path: "/dfa-simulator",
+    name: "DFASimulator",
+    component: () => import("../views/DFASimulator.vue"),
+  },
+  {
+    path: "/nfa-simulator",
+    name: "NFASimulator",
+    component: () => import("../views/NFASimulator.vue"),
+  },
 ];
 
 const router = createRouter({

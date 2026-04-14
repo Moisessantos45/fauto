@@ -1,12 +1,13 @@
 import { ref, reactive } from "vue";
 import { defineStore } from "pinia";
 import { storeToRefs } from "pinia";
-import type { Nodo, Transicion } from "@/types/nodo";
+import type { Nodo, TransicionNFA } from "@/types/nodo";
+import { EPSILON } from "@/types/nodo";
 import useMenusStore from "@/stores/menus";
 import useNodosStore from "@/stores/nodos";
 import useModalStore from "./modal";
 
-const useStateTransitionStore = defineStore("stateTransition", () => {
+const useStateTransitionNFAStore = defineStore("stateTransitionNFA", () => {
   const useModal = useModalStore();
   const menusStore = useMenusStore();
   const { modalVisible } = storeToRefs(menusStore);
@@ -26,13 +27,12 @@ const useStateTransitionStore = defineStore("stateTransition", () => {
     nombre: "",
     esInicial: false,
     esFinal: false,
-    transiciones: [] as Transicion[],
+    transicionesNFA: [] as TransicionNFA[],
   });
 
   const transicionFormulario = reactive({
-    simboloLee: "",
-    simboloEscribe: "",
-    movimiento: "R" as "L" | "R" | "S",
+    simbolo: "",
+    esEpsilon: false,
     proximoEstado: "",
   });
 
@@ -87,9 +87,9 @@ const useStateTransitionStore = defineStore("stateTransition", () => {
           nodo.esInicial = false;
         }
 
-        nodo.transiciones = [...estadoFormulario.transiciones];
+        nodo.transicionesNFA = [...estadoFormulario.transicionesNFA];
 
-        nodosStore.sincronizarConexionesDeNodo(nodoId);
+        nodosStore.sincronizarConexionesDeNodoNFA(nodoId);
       }
     } else {
       const nuevoEstado = nodosStore.agregarEstado(
@@ -101,13 +101,12 @@ const useStateTransitionStore = defineStore("stateTransition", () => {
       );
 
       nodoId = nuevoEstado.id;
+      nuevoEstado.transicionesNFA = [];
 
-      estadoFormulario.transiciones.forEach((trans) => {
-        nodosStore.agregarTransicion(
+      estadoFormulario.transicionesNFA.forEach((trans) => {
+        nodosStore.agregarTransicionNFA(
           nuevoEstado.id,
-          trans.simboloLee,
-          trans.simboloEscribe,
-          trans.movimiento,
+          trans.simbolo,
           trans.proximoEstado
         );
       });
@@ -119,7 +118,7 @@ const useStateTransitionStore = defineStore("stateTransition", () => {
         if (element) {
           nuevoEstado.elemento = element;
         }
-        nodosStore.sincronizarConexionesDeNodo(nodoId);
+        nodosStore.sincronizarConexionesDeNodoNFA(nodoId);
       }, 100);
     }
 
@@ -127,11 +126,12 @@ const useStateTransitionStore = defineStore("stateTransition", () => {
   };
 
   const agregarTransicion = () => {
-    if (
-      !transicionFormulario.simboloLee.trim() ||
-      !transicionFormulario.simboloEscribe.trim() ||
-      !transicionFormulario.proximoEstado
-    ) {
+    // Si es epsilon, usar el símbolo epsilon
+    const simboloFinal = transicionFormulario.esEpsilon
+      ? EPSILON
+      : transicionFormulario.simbolo.trim();
+
+    if (!simboloFinal || !transicionFormulario.proximoEstado) {
       useModal.openModal(
         "Error de validación",
         "Por favor completa todos los campos de la transición"
@@ -139,17 +139,14 @@ const useStateTransitionStore = defineStore("stateTransition", () => {
       return;
     }
 
-    estadoFormulario.transiciones.push({
-      id: `trans-${Date.now()}`,
-      simboloLee: transicionFormulario.simboloLee,
-      simboloEscribe: transicionFormulario.simboloEscribe,
-      movimiento: transicionFormulario.movimiento,
+    estadoFormulario.transicionesNFA.push({
+      id: `trans-nfa-${Date.now()}`,
+      simbolo: simboloFinal,
       proximoEstado: parseInt(transicionFormulario.proximoEstado as any),
     });
 
-    transicionFormulario.simboloLee = "";
-    transicionFormulario.simboloEscribe = "";
-    transicionFormulario.movimiento = "R";
+    transicionFormulario.simbolo = "";
+    transicionFormulario.esEpsilon = false;
     transicionFormulario.proximoEstado = "";
     modalTransicionVisible.value = false;
   };
@@ -160,7 +157,7 @@ const useStateTransitionStore = defineStore("stateTransition", () => {
     estadoFormulario.nombre = "";
     estadoFormulario.esInicial = false;
     estadoFormulario.esFinal = false;
-    estadoFormulario.transiciones = [];
+    estadoFormulario.transicionesNFA = [];
   };
 
   const editarEstado = (nodo: Nodo) => {
@@ -168,7 +165,7 @@ const useStateTransitionStore = defineStore("stateTransition", () => {
     estadoFormulario.nombre = nodo.label;
     estadoFormulario.esInicial = nodo.esInicial;
     estadoFormulario.esFinal = nodo.esFinal;
-    estadoFormulario.transiciones = [...nodo.transiciones];
+    estadoFormulario.transicionesNFA = [...(nodo.transicionesNFA || [])];
     modalVisible.value = true;
   };
 
@@ -222,4 +219,4 @@ const useStateTransitionStore = defineStore("stateTransition", () => {
   };
 });
 
-export default useStateTransitionStore;
+export default useStateTransitionNFAStore;

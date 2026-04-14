@@ -1,5 +1,6 @@
-import type { Transicion } from "./nodo";
+import type { Transicion, TransicionDFA } from "./nodo";
 
+// Paso de simulación para Máquina de Turing
 interface PasoSimulacion {
   paso: number;
   estadoActual: number;
@@ -10,5 +11,14 @@ interface PasoSimulacion {
   mensaje: string;
 }
 
+// Paso de simulación para DFA
+interface PasoSimulacionDFA {
+  paso: number;
+  estadoActual: number;
+  cadenaRestante: string;
+  simboloLeido: string;
+  transicion: TransicionDFA | null;
+  mensaje: string;
+}
 
-export type { PasoSimulacion };
+export type { PasoSimulacion, PasoSimulacionDFA };

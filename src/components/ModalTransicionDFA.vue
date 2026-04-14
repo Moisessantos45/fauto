@@ -4,24 +4,15 @@
         visible ? 'flex' : 'hidden'
     ]">
         <div class="border-b border-slate-100 pb-4 mb-2">
-            <h3 class="text-lg font-bold text-slate-800">Agregar Transición</h3>
+            <h3 class="text-lg font-bold text-slate-800">Agregar Transición DFA</h3>
         </div>
 
         <div class="space-y-3 text-sm">
             <div>
-                <label class="font-medium text-slate-700 block mb-1">Lee (símbolo actual):</label>
-                <input type="text" v-model="formulario.simboloLee" maxlength="1"
+                <label class="font-medium text-slate-700 block mb-1">Símbolo de Entrada:</label>
+                <input type="text" v-model="formulario.simbolo" maxlength="1"
+                    placeholder="a, b, 0, 1..."
                     class="border border-slate-200 rounded-lg p-2.5 w-full focus:border-teal-400 focus:outline-none focus:ring-2 focus:ring-teal-100 bg-slate-50/50 transition">
-            </div>
-            <div>
-                <label class="font-medium text-slate-700 block mb-1">Escribe (nuevo símbolo):</label>
-                <input type="text" v-model="formulario.simboloEscribe" maxlength="1"
-                    class="border border-slate-200 rounded-lg p-2.5 w-full focus:border-teal-400 focus:outline-none focus:ring-2 focus:ring-teal-100 bg-slate-50/50 transition">
-            </div>
-            <div>
-                <label class="font-medium text-slate-700 block mb-1">Movimiento del cabezal:</label>
-                <DropDown :list="opcionesMovimiento" :initial-value="formulario.movimiento"
-                    @change="(val) => formulario.movimiento = val.value as 'L' | 'R' | 'S'" />
             </div>
             <div>
                 <label class="font-medium text-slate-700 block mb-1">Próximo Estado:</label>
@@ -49,16 +40,14 @@ import DropDown from './DropDown.vue';
 import type { OptionalField } from '@/types/drop';
 import type { Nodo } from '@/types/nodo';
 
-interface TransicionFormulario {
-    simboloLee: string;
-    simboloEscribe: string;
-    movimiento: 'L' | 'R' | 'S';
+interface TransicionFormularioDFA {
+    simbolo: string;
     proximoEstado: string;
 }
 
 const props = defineProps<{
     visible: boolean;
-    formulario: TransicionFormulario;
+    formulario: TransicionFormularioDFA;
     nodos: Nodo[];
 }>();
 
@@ -66,12 +55,6 @@ defineEmits<{
     (e: 'close'): void;
     (e: 'submit'): void;
 }>();
-
-const opcionesMovimiento: OptionalField[] = [
-    { name: '⬅️ Izquierda (L)', value: 'L' },
-    { name: 'Derecha (R)', value: 'R' },
-    { name: '️ No mover (S)', value: 'S' },
-];
 
 const opcionesNodos = computed<OptionalField[]>(() => {
     return props.nodos.map(nodo => ({

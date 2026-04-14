@@ -1,4 +1,4 @@
-import { ref, reactive } from "vue";
+import { ref, reactive, computed } from "vue";
 import { defineStore } from "pinia";
 import type {
   Conexion,
@@ -6,10 +6,16 @@ import type {
   Punto,
   PuntoControlMovimiento,
   Transicion,
+  TransicionDFA,
+  TransicionNFA,
 } from "@/types/nodo";
 
 const useNodosStore = defineStore("nodos", () => {
-  const svgLienzoRef = ref<SVGSVGElement | null>(null);
+  const _svgLienzoRef = ref<SVGSVGElement | null>(null);
+  const svgLienzoRef = computed({
+    get: () => _svgLienzoRef.value || (document.getElementById("svg-lienzo") as SVGSVGElement | null),
+    set: (val: SVGSVGElement | null) => { _svgLienzoRef.value = val; }
+  });
 
   const nodos = ref<Nodo[]>([]);
 
@@ -302,15 +308,39 @@ const useNodosStore = defineStore("nodos", () => {
     const nodoOrigen = nodos.value.find((n) => n.id === origenId);
     if (!nodoOrigen) return;
 
-    const transicionesRelacionadas = nodoOrigen.transiciones.filter(
+    // Detectar si tiene transiciones TM o DFA
+    const transicionesTM = nodoOrigen.transiciones.filter(
+      (t) => t.proximoEstado === destinoId
+    );
+    const transicionesDFA = (nodoOrigen.transicionesDFA || []).filter(
+      (t) => t.proximoEstado === destinoId
+    );
+    const transicionesNFA = (nodoOrigen.transicionesNFA || []).filter(
       (t) => t.proximoEstado === destinoId
     );
 
-    if (transicionesRelacionadas.length === 0) return;
+    // Si no hay transiciones de ningún tipo, no mostrar etiqueta
+    if (
+      transicionesTM.length === 0 &&
+      transicionesDFA.length === 0 &&
+      transicionesNFA.length === 0
+    )
+      return;
 
-    const textoTransiciones = transicionesRelacionadas
-      .map((t) => `${t.simboloLee},${t.simboloEscribe}→${t.movimiento}`)
-      .join(" | ");
+    // Generar texto según el tipo de transición
+    let textoTransiciones: string;
+    if (transicionesTM.length > 0) {
+      // Formato TM: "a,b→R | c,d→L"
+      textoTransiciones = transicionesTM
+        .map((t) => `${t.simboloLee},${t.simboloEscribe}→${t.movimiento}`)
+        .join(" | ");
+    } else if (transicionesDFA.length > 0) {
+      // Formato DFA: "a, b, c"
+      textoTransiciones = transicionesDFA.map((t) => t.simbolo).join(", ");
+    } else {
+      // Formato NFA: "a, b, ε"
+      textoTransiciones = transicionesNFA.map((t) => t.simbolo).join(", ");
+    }
 
     let posX: number, posY: number;
     if (controlPoints && controlPoints.length > 0) {
@@ -823,6 +853,229 @@ const useNodosStore = defineStore("nodos", () => {
     }, 200);
   };
 
+  // === DFA METHODS ===
+
+  const agregarTransicionDFA = (
+    nodoOrigen: number,
+    simbolo: string,
+    nodoDestino: number
+  ): TransicionDFA => {
+    const nodo = nodos.value.find((n) => n.id === nodoOrigen);
+    if (!nodo) throw new Error(`Nodo ${nodoOrigen} no encontrado`);
+
+    if (!nodo.transicionesDFA) {
+      nodo.transicionesDFA = [];
+    }
+
+    const transicion: TransicionDFA = {
+      id: `trans-dfa-${Date.now()}-${Math.random()}`,
+      simbolo,
+      proximoEstado: nodoDestino,
+    };
+
+    nodo.transicionesDFA.push(transicion);
+    return transicion;
+  };
+
+  const eliminarTransicionDFA = (nodoId: number, transicionId: string) => {
+    const nodo = nodos.value.find((n) => n.id === nodoId);
+    if (!nodo || !nodo.transicionesDFA) return;
+
+    nodo.transicionesDFA = nodo.transicionesDFA.filter(
+      (t) => t.id !== transicionId
+    );
+  };
+
+  const sincronizarConexionesDeNodoDFA = (nodoId: number): void => {
+    const nodo = nodos.value.find((n) => n.id === nodoId);
+    if (!nodo || !nodo.transicionesDFA) return;
+
+    const destinosUnicos = new Set<number>();
+    nodo.transicionesDFA.forEach((trans) => {
+      destinosUnicos.add(trans.proximoEstado);
+    });
+
+    destinosUnicos.forEach((destinoId) => {
+      setTimeout(() => {
+        crearConexionVisual(nodoId, destinoId);
+      }, 150);
+    });
+
+    setTimeout(() => {
+      actualizarEtiquetasDeNodoDFA(nodoId);
+    }, 200);
+  };
+
+  const actualizarEtiquetasDeNodoDFA = (nodoId: number): void => {
+    conexiones.value.forEach((conn, connectionId) => {
+      const origenId = parseInt(
+        conn.origen.getAttribute("data-nodo-id") || "-1"
+      );
+      if (origenId === nodoId) {
+        dibujarOActualizarConexionDFA(conn.origen, conn.destino, connectionId);
+      }
+    });
+  };
+
+  const dibujarOActualizarConexionDFA = (
+    origen: HTMLElement,
+    destino: HTMLElement,
+    connectionId: string
+  ): void => {
+    // Reutiliza la misma lógica de dibujo base
+    dibujarOActualizarConexion(origen, destino, connectionId);
+
+    // Actualiza la etiqueta con formato DFA
+    const origenId = parseInt(origen.getAttribute("data-nodo-id") || "-1");
+    const destinoId = parseInt(destino.getAttribute("data-nodo-id") || "-1");
+    const conn = conexiones.value.get(connectionId);
+
+    if (conn) {
+      agregarEtiquetaTransicionDFA(
+        connectionId,
+        origenId,
+        destinoId,
+        conn.controlPoints
+      );
+    }
+  };
+
+  const agregarEtiquetaTransicionDFA = (
+    connectionId: string,
+    origenId: number,
+    destinoId: number,
+    controlPoints: Punto[]
+  ): void => {
+    const nodoOrigen = nodos.value.find((n) => n.id === origenId);
+    if (!nodoOrigen || !nodoOrigen.transicionesDFA) return;
+
+    const transicionesRelacionadas = nodoOrigen.transicionesDFA.filter(
+      (t) => t.proximoEstado === destinoId
+    );
+
+    if (transicionesRelacionadas.length === 0) return;
+
+    // Formato DFA: solo símbolos separados por coma
+    const textoTransiciones = transicionesRelacionadas
+      .map((t) => t.simbolo)
+      .join(", ");
+
+    let posX: number, posY: number;
+    if (controlPoints && controlPoints.length > 0) {
+      const cp = controlPoints[Math.floor(controlPoints.length / 2)];
+      if (!cp) return;
+      posX = cp.x;
+      posY = cp.y - 15;
+    } else {
+      return;
+    }
+
+    const grupoEtiqueta = crearObtenerElementoSVG(
+      connectionId + "-etiqueta",
+      "g",
+      { class: "etiqueta-transicion" }
+    ) as SVGGElement;
+    grupoEtiqueta.innerHTML = "";
+
+    const padding = 4;
+    const fontSize = 11;
+    const textWidth = textoTransiciones.length * 6.5 + padding * 2;
+    const textHeight = fontSize + padding * 2;
+
+    const rect = document.createElementNS("http://www.w3.org/2000/svg", "rect");
+    rect.setAttribute("x", (posX - textWidth / 2).toString());
+    rect.setAttribute("y", (posY - textHeight / 2).toString());
+    rect.setAttribute("width", textWidth.toString());
+    rect.setAttribute("height", textHeight.toString());
+    rect.setAttribute("rx", "4");
+    rect.setAttribute("ry", "4");
+    rect.setAttribute("fill", "#1e293b");
+    rect.setAttribute("fill-opacity", "0.9");
+    grupoEtiqueta.appendChild(rect);
+
+    const texto = document.createElementNS(
+      "http://www.w3.org/2000/svg",
+      "text"
+    );
+    texto.setAttribute("x", posX.toString());
+    texto.setAttribute("y", (posY + 4).toString());
+    texto.setAttribute("text-anchor", "middle");
+    texto.setAttribute("font-size", fontSize.toString());
+    texto.setAttribute("font-family", "monospace");
+    texto.setAttribute("font-weight", "600");
+    texto.setAttribute("fill", "#f0fdf4");
+    texto.textContent = textoTransiciones;
+    grupoEtiqueta.appendChild(texto);
+  };
+
+  // === END DFA METHODS ===
+
+  // === NFA METHODS ===
+
+  const agregarTransicionNFA = (
+    nodoOrigen: number,
+    simbolo: string,
+    nodoDestino: number
+  ): TransicionNFA => {
+    const nodo = nodos.value.find((n) => n.id === nodoOrigen);
+    if (!nodo) throw new Error(`Nodo ${nodoOrigen} no encontrado`);
+
+    if (!nodo.transicionesNFA) {
+      nodo.transicionesNFA = [];
+    }
+
+    const transicion: TransicionNFA = {
+      id: `trans-nfa-${Date.now()}-${Math.random()}`,
+      simbolo,
+      proximoEstado: nodoDestino,
+    };
+
+    nodo.transicionesNFA.push(transicion);
+    return transicion;
+  };
+
+  const eliminarTransicionNFA = (nodoId: number, transicionId: string) => {
+    const nodo = nodos.value.find((n) => n.id === nodoId);
+    if (!nodo || !nodo.transicionesNFA) return;
+
+    nodo.transicionesNFA = nodo.transicionesNFA.filter(
+      (t) => t.id !== transicionId
+    );
+  };
+
+  const sincronizarConexionesDeNodoNFA = (nodoId: number): void => {
+    const nodo = nodos.value.find((n) => n.id === nodoId);
+    if (!nodo || !nodo.transicionesNFA) return;
+
+    const destinosUnicos = new Set<number>();
+    nodo.transicionesNFA.forEach((trans) => {
+      destinosUnicos.add(trans.proximoEstado);
+    });
+
+    destinosUnicos.forEach((destinoId) => {
+      setTimeout(() => {
+        crearConexionVisual(nodoId, destinoId);
+      }, 150);
+    });
+
+    setTimeout(() => {
+      actualizarEtiquetasDeNodoNFA(nodoId);
+    }, 200);
+  };
+
+  const actualizarEtiquetasDeNodoNFA = (nodoId: number): void => {
+    conexiones.value.forEach((conn, connectionId) => {
+      const origenId = parseInt(
+        conn.origen.getAttribute("data-nodo-id") || "-1"
+      );
+      if (origenId === nodoId) {
+        dibujarOActualizarConexion(conn.origen, conn.destino, connectionId);
+      }
+    });
+  };
+
+  // === END NFA METHODS ===
+
   const actualizarEtiquetasDeNodo = (nodoId: number): void => {
     conexiones.value.forEach((conn, connectionId) => {
       const origenId = parseInt(
@@ -984,6 +1237,16 @@ const useNodosStore = defineStore("nodos", () => {
 
     crearConexionVisual,
     sincronizarConexionesDeNodo,
+
+    // DFA Methods
+    agregarTransicionDFA,
+    eliminarTransicionDFA,
+    sincronizarConexionesDeNodoDFA,
+
+    // NFA Methods
+    agregarTransicionNFA,
+    eliminarTransicionNFA,
+    sincronizarConexionesDeNodoNFA,
   };
 });
 

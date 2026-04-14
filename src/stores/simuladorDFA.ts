@@ -1,19 +1,18 @@
 import { ref } from "vue";
 import { defineStore } from "pinia";
 import useNodosStore from "./nodos";
-import type { Transicion } from "@/types/nodo";
-import type { PasoSimulacion } from "@/types/simulacion";
+import type { TransicionDFA } from "@/types/nodo";
+import type { PasoSimulacionDFA } from "@/types/simulacion";
 
-export const useSimuladorStore = defineStore("simulador", () => {
+export const useSimuladorDFAStore = defineStore("simuladorDFA", () => {
   const nodosStore = useNodosStore();
 
   const enSimulacion = ref(false);
   const pausado = ref(false);
-  const cinta = ref<string[]>([]);
-  const posicionCabeza = ref(0);
+  const cadenaEntrada = ref<string>("");
+  const posicionLectura = ref(0);
   const estadoActual = ref<number | null>(null);
-  const historialPasos = ref<PasoSimulacion[]>([]);
-  const simboloBlanco = ref("_");
+  const historialPasos = ref<PasoSimulacionDFA[]>([]);
   const pasoActual = ref(0);
 
   const velocidadSimulacion = ref(500);
@@ -26,15 +25,15 @@ export const useSimuladorStore = defineStore("simulador", () => {
       return false;
     }
 
-    cinta.value =
-      entrada.split("").length > 0 ? entrada.split("") : [simboloBlanco.value];
-    posicionCabeza.value = 0;
+    cadenaEntrada.value = entrada;
+    posicionLectura.value = 0;
     estadoActual.value = estadoInicial.id;
     historialPasos.value = [];
     pasoActual.value = 0;
     enSimulacion.value = true;
     pausado.value = false;
-    registrarPaso(0, estadoInicial.id, null, "Simulación iniciada");
+
+    registrarPaso(0, estadoInicial.id, null, "Simulación DFA iniciada");
 
     return true;
   };
@@ -42,18 +41,27 @@ export const useSimuladorStore = defineStore("simulador", () => {
   const registrarPaso = (
     paso: number,
     estado: number,
-    transicion: Transicion | null,
+    transicion: TransicionDFA | null,
     mensaje: string
   ) => {
     historialPasos.value.push({
       paso,
       estadoActual: estado,
-      cinta: [...cinta.value],
-      posicionCabeza: posicionCabeza.value,
-      simboloLeido: cinta.value[posicionCabeza.value] || simboloBlanco.value,
+      cadenaRestante: cadenaEntrada.value.slice(posicionLectura.value),
+      simboloLeido: cadenaEntrada.value[posicionLectura.value] || "",
       transicion,
       mensaje,
     });
+  };
+
+  const obtenerTransicionDFA = (
+    nodoId: number,
+    simbolo: string
+  ): TransicionDFA | undefined => {
+    const nodo = nodosStore.nodos.find((n) => n.id === nodoId);
+    if (!nodo || !nodo.transicionesDFA) return undefined;
+
+    return nodo.transicionesDFA.find((t) => t.simbolo === simbolo);
   };
 
   const ejecutarPaso = (): boolean => {
@@ -76,50 +84,43 @@ export const useSimuladorStore = defineStore("simulador", () => {
       return false;
     }
 
-    if (nodoActual.esFinal) {
-      registrarPaso(
-        pasoActual.value,
-        estadoActual.value,
-        null,
-        `Máquina aceptada. Estado final: ${nodoActual.label}`
-      );
+    // Si ya no hay más símbolos que leer
+    if (posicionLectura.value >= cadenaEntrada.value.length) {
+      if (nodoActual.esFinal) {
+        registrarPaso(
+          pasoActual.value,
+          estadoActual.value,
+          null,
+          `Cadena aceptada. Estado final: ${nodoActual.label}`
+        );
+      } else {
+        registrarPaso(
+          pasoActual.value,
+          estadoActual.value,
+          null,
+          `Cadena rechazada. Estado ${nodoActual.label} no es final`
+        );
+      }
       finalizarSimulacion();
       return true;
     }
 
-    if (posicionCabeza.value < 0) {
-      cinta.value.unshift(simboloBlanco.value);
-      posicionCabeza.value = 0;
+    const simboloActual = cadenaEntrada.value[posicionLectura.value];
+    if (!simboloActual) {
+      registrarPaso(
+        pasoActual.value,
+        estadoActual.value,
+        null,
+        "Símbolo no encontrado"
+      );
+      return false;
     }
 
-    if (posicionCabeza.value >= cinta.value.length) {
-      cinta.value.push(simboloBlanco.value);
-    }
-
-    const simboloActual =
-      cinta.value[posicionCabeza.value] || simboloBlanco.value;
-
     console.log(
-      `[Simulador] Estado: ${
-        nodoActual.label
-      }, Símbolo: '${simboloActual}' (código: ${simboloActual.charCodeAt(
-        0
-      )}), Posición: ${posicionCabeza.value}`
-    );
-    console.log(
-      `[Simulador] Transiciones disponibles:`,
-      nodoActual.transiciones.map(
-        (t) =>
-          `'${t.simboloLee}' (código: ${t.simboloLee.charCodeAt(0)}) → estado ${
-            t.proximoEstado
-          }`
-      )
+      `[DFA] Estado: ${nodoActual.label}, Símbolo: '${simboloActual}', Posición: ${posicionLectura.value}`
     );
 
-    const transicion = nodosStore.obtenerTransicion(
-      estadoActual.value,
-      simboloActual
-    );
+    const transicion = obtenerTransicionDFA(estadoActual.value, simboloActual);
 
     if (!transicion) {
       registrarPaso(
@@ -132,14 +133,10 @@ export const useSimuladorStore = defineStore("simulador", () => {
       return false;
     }
 
-    cinta.value[posicionCabeza.value] = transicion.simboloEscribe;
+    // Avanzar en la cadena
+    posicionLectura.value++;
 
-    if (transicion.movimiento === "L") {
-      posicionCabeza.value--;
-    } else if (transicion.movimiento === "R") {
-      posicionCabeza.value++;
-    }
-
+    // Cambiar al siguiente estado
     const nuevoEstado = transicion.proximoEstado;
     estadoActual.value = nuevoEstado;
 
@@ -147,7 +144,9 @@ export const useSimuladorStore = defineStore("simulador", () => {
       pasoActual.value,
       estadoActual.value,
       transicion,
-      `Transición: ${simboloActual} → ${transicion.simboloEscribe}, movimiento: ${transicion.movimiento}`
+      `Transición: '${simboloActual}' → Estado ${
+        nodosStore.nodos.find((n) => n.id === nuevoEstado)?.label || nuevoEstado
+      }`
     );
 
     return true;
@@ -183,8 +182,8 @@ export const useSimuladorStore = defineStore("simulador", () => {
     enSimulacion.value = false;
     pausado.value = false;
     simulacionAutomaticaActiva.value = false;
-    cinta.value = [];
-    posicionCabeza.value = 0;
+    cadenaEntrada.value = "";
+    posicionLectura.value = 0;
     estadoActual.value = null;
     historialPasos.value = [];
     pasoActual.value = 0;
@@ -207,15 +206,11 @@ export const useSimuladorStore = defineStore("simulador", () => {
       pasoActual: pasoActual.value,
       estadoActual: nodoActual?.label || "N/A",
       estadoActualId: estadoActual.value,
-      cinta: cinta.value,
-      posicionCabeza: posicionCabeza.value,
+      cadenaRestante: cadenaEntrada.value.slice(posicionLectura.value),
+      posicionLectura: posicionLectura.value,
       historialPasos: historialPasos.value,
       ultimoPaso: historialPasos.value[historialPasos.value.length - 1],
     };
-  };
-
-  const obtenerCintaFormateada = (): string => {
-    return cinta.value.join("");
   };
 
   const validarConfiguracion = (): { valida: boolean; errores: string[] } => {
@@ -233,14 +228,17 @@ export const useSimuladorStore = defineStore("simulador", () => {
       errores.push("No hay un estado final");
     }
 
+    // Validar transiciones DFA
     nodosStore.nodos.forEach((nodo) => {
-      nodo.transiciones.forEach((trans) => {
-        if (!nodosStore.nodos.find((n) => n.id === trans.proximoEstado)) {
-          errores.push(
-            `Transición en "${nodo.label}" apunta a estado inválido`
-          );
-        }
-      });
+      if (nodo.transicionesDFA) {
+        nodo.transicionesDFA.forEach((trans) => {
+          if (!nodosStore.nodos.find((n) => n.id === trans.proximoEstado)) {
+            errores.push(
+              `Transición en "${nodo.label}" apunta a estado inválido`
+            );
+          }
+        });
+      }
     });
 
     return {
@@ -252,11 +250,10 @@ export const useSimuladorStore = defineStore("simulador", () => {
   return {
     enSimulacion,
     pausado,
-    cinta,
-    posicionCabeza,
+    cadenaEntrada,
+    posicionLectura,
     estadoActual,
     historialPasos,
-    simboloBlanco,
     pasoActual,
     velocidadSimulacion,
     simulacionAutomaticaActiva,
@@ -268,7 +265,7 @@ export const useSimuladorStore = defineStore("simulador", () => {
     reiniciar,
     finalizarSimulacion,
     obtenerEstadoSimulacion,
-    obtenerCintaFormateada,
     validarConfiguracion,
+    obtenerTransicionDFA,
   };
 });
